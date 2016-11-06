@@ -2,6 +2,8 @@
 require "bundler/lockfile_parser"
 require "digest/sha1"
 require "set"
+require "fileutils"
+require "tempfile"
 
 module Bundler
   class Definition
@@ -276,6 +278,45 @@ module Bundler
 
     def groups
       dependencies.map(&:groups).flatten.uniq
+    end
+
+    def specify_versions(gemfile)
+      SharedHelpers.filesystem_access(gemfile) do |p|
+        temp_file = Tempfile.new("gemfile_tmp")
+        begin
+          File.open(p, "r") do |file|
+            file.each_line do |line|
+              temp_file.puts specify_version(line)
+            end
+          end
+          temp_file.close
+          FileUtils.mv(temp_file.path, p)
+        ensure
+          temp_file.close
+          temp_file.unlink
+        end
+      end
+    end
+
+    def specify_version(line)
+      # skip source group empty lines comments
+      return line if line.match(/source|^\s*$|#.+|end/)
+
+      # skip if not gem
+      return line unless line.match(/^\s*gem/)
+
+      # skip lines with git, path or version specified
+      return line if line.match /(\'|\")(~>|>=)\s*\d?|(path)|(git)/
+
+      gem_name = line.match(/["|']([^;]*)['|"]/)[1]
+      if dependency = self.specs.detect { |spec| spec.name == gem_name }
+        installed_version = dependency.to_spec.version.to_s
+        line.sub!(/#{gem_name}('|")/) do |match|
+          match + ", \"#{installed_version}\""
+        end
+        Bundler.ui.warn "Version for #{dependency.name} was set to = #{installed_version}"
+      end
+      line
     end
 
     def lock(file, preserve_unknown_sections = false)

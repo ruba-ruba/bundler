@@ -179,6 +179,8 @@ module Bundler
       "Exclude gems that are part of the specified named group."
     method_option "with", :type => :array, :banner =>
       "Include gems that are part of the specified named group."
+    method_option "specify-versions", :type => :boolean, :banner =>
+      "Modify Gemfile and specify versions of gems."
     map "i" => "install"
     def install
       require "bundler/cli/install"

@@ -83,6 +83,7 @@ module Bundler
       install(options)
 
       lock unless Bundler.settings[:frozen]
+      specify_versions if options["specify-versions"]
       Standalone.new(options[:standalone], @definition).generate if options[:standalone]
     end
 
@@ -231,6 +232,10 @@ module Bundler
 
     def lock(opts = {})
       @definition.lock(Bundler.default_lockfile, opts[:preserve_unknown_sections])
+    end
+
+    def specify_versions
+      @definition.specify_versions(Bundler.default_gemfile)
     end
   end
 end
